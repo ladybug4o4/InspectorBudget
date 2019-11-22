@@ -1,0 +1,5 @@
+.idea/
+*.pyc
+config.json
+categories.json
+data/*
