@@ -1,0 +1,7 @@
+#sudo apt install libcurl4-openssl-dev
+#sudo apt install libxml2-dev
+install.packages(c("curl", "httr"))
+install.packages(c("usethis", "covr", "httr", "rversions"), dependencies=TRUE)
+install.packages("devtools", "shiny", "DT")
+install.packages(c("shiny"))
+devtools::install_github("rstudio/shinydashboard")
