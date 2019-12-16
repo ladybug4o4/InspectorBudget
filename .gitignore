@@ -1,6 +1,6 @@
 .idea/
 *.pyc
-config.json
+my_config.json
 categories.json
 data/*
 ignore/

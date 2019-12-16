@@ -114,11 +114,10 @@
     BoxLayout:
         orientation: 'horizontal'
         FloatInput:
-            id: ammount
+            id: amount
             text: ''
             input_filter: 'float'
             input_type: 'number'
-            layout: "numpad.json"
             hint_text: 'Kwota'
             halign: 'center'
             multiline: False
@@ -135,18 +134,25 @@
             size_hint_x: .25
     Date:
         id: date
-    Category:
-        id: category
-        font_size: sp(26)
-        text: self.kv_vals['+'][0] if plus.state == 'down' else self.kv_vals['-'][0]
-        values: self.kv_vals['+'] if plus.state == 'down' else self.kv_vals['-']
-        option_cls: Factory.get('MySpinnerOption')
-        background_color: app.col['item']
-        background_down: ''
-        background_normal: ''
-        markup: True
-        text_size : self.width, None
-        halign: 'center'
+    BoxLayout:
+        orientation: 'horizontal'
+        Category:
+            id: category
+            font_size: sp(26)
+            text: self.kv_vals['+'][0] if plus.state == 'down' else self.kv_vals['-'][0]
+            values: self.kv_vals['+'] if plus.state == 'down' else self.kv_vals['-']
+            option_cls: Factory.get('MySpinnerOption')
+            background_color: app.col['item']
+            background_down: ''
+            background_normal: ''
+            markup: True
+            text_size : self.width, None
+            halign: 'center'
+            size_hint_x: 90
+#        Button:
+#            text: "settings"
+#            size_hint_x: 10
+
     MyTextInput:
         id: note
         hint_text: 'Notatka'
@@ -212,10 +218,39 @@
         TableContent
             id: table
 
+<LoginPopup>:
+    title: 'Dane logowania'
+    size_hint: (.7, .5)
+    BoxLayout:
+        orientation: 'vertical'
+        TextInput:
+            id: user
+            multiline: False
+            hint_text: 'nazwa użytkownika'
+            halign: 'center'
+        TextInput:
+            id: pswd
+            password: True
+            multiline: False
+            hint_text: 'hasło'
+            halign: 'center'
+        Label:
+            text: 'Ścieżka na routerze:'
+        TextInput:
+            id: path
+            text: "/usb1_1/inspectorbudget/"
+            multiline: False
+            halign: 'center'
+        Button:
+            text: 'OK'
+            on_press: root.save()
+            size_hint_y: .9
+
+
 <Synchro>:
     BoxLayout:
         orientation: 'vertical'
-        Log:
+        Status:
             text: self.txt
             background_color: app.col['zolty']
         Button:
@@ -236,23 +271,6 @@
             background_color: app.col['item']
             markup: True
 
-<Pswrd>:
-    BoxLayout:
-        orientation: 'vertical'
-        TextInput:
-            text: root.secret
-            password: True
-            multiline: False
-        BoxLayout:
-            orientation: 'horizontal'
-            CheckBox:
-                active: True
-            Label:
-                text: 'Zapisac?'
-            Button:
-                text: 'Polacz'
-
-
 <MainWidget>:
     on_index: root.update_tab()
     id: carousel
@@ -263,4 +281,3 @@
 
 
         ##TODO w newentry: zmin napis na guzkiu obok kalendarza.
-        ##TODO klawiatura numeryczna do kwoty

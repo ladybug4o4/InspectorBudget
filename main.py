@@ -68,7 +68,7 @@ class Save(Button):
     def on_release(self):
         print('zapisuje...')
 
-        amount = self.parent.parent.ids.ammount.text
+        amount = self.parent.parent.ids.amount.text
         if len(amount):
             category = self.parent.parent.ids.category.text
             note = self.parent.parent.ids.note.text
@@ -91,7 +91,7 @@ class Save(Button):
 
     def restart_setup(self):
         self.parent.parent.ids.date.reset()
-        self.parent.parent.ids.ammount.text = ''
+        self.parent.parent.ids.amount.text = ''
         self.parent.parent.ids.note.text = ''
         self.parent.parent.ids.plus.state = 'normal'
         self.parent.parent.ids.minus.state = 'down'
@@ -101,26 +101,36 @@ class Save(Button):
 class Undo(MultiExpressionButton):
 
     def on_long_press(self):
-        print('COFAM')
-        day = self.parent.parent.ids.date.dp.text.split(',')[1][1:]
-        data = Data(filename='%s_%s' % (day[-2:], day[3:5]))
-        with open(data.tmp_path, 'r') as f:
-            lines = json.load(f)
-        if len(lines) > 1:
-            with open(data.tmp_path, 'w') as f:
-                json.dump(lines[:-1], f)
+        files = os.listdir(os.path.join(os.getcwd(), load_config()["device_path"]))
+        if any([ x.endswith('tmp') for x in files]):
+            print('COFAM')
+            day = self.parent.parent.ids.date.dp.text.split(',')[1][1:]
+            data = Data(filename='%s_%s' % (day[-2:], day[3:5]))
+            with open(data.tmp_path, 'r') as f:
+                lines = json.load(f)
+            if len(lines) > 1:
+                with open(data.tmp_path, 'w') as f:
+                    json.dump(lines[:-1], f)
+            else:
+                os.remove(data.tmp_path)
+            pop = Popup()
+            pop.title = ''
+            pop.separator_height = 0
+            pop.size_hint = (.5, .35)
+            pop.content = Button(text = 'Operacja cofnięta')
+            pop.content.bind(on_press=pop.dismiss)
+            pop.open()
         else:
-            os.remove(data.tmp_path)
-        pop = Popup()
-        pop.title = ''
-        pop.separator_height = 0
-        pop.size_hint = (.5, .35)
-        pop.content = Button(text = 'coflem')
-        pop.content.bind(on_press=pop.dismiss)
-        pop.open()
+            pop = Popup()
+            pop.title = ''
+            pop.separator_height = 0
+            pop.size_hint = (.5, .35)
+            pop.content = Button(text='Brak nowych wpisów')
+            pop.content.bind(on_press=pop.dismiss)
+            pop.open()
 
 
-class NewEntry(BoxLayout): pass
+class NewEntry(BoxLayout):pass
 
 
 class Item(Label): pass
@@ -262,15 +272,33 @@ class TableContent(RecycleView):
         self.mnth_tot = self.month_total()
 
 
-class Pswrd(BoxLayout):
-    secret = StringProperty('')
+class LoginPopup(Popup):
+    def save(self):
+        user = self.ids.user.text
+        pswd = self.ids.pswd.text
+        path = self.ids.path.text
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+        config['share_name'] = user
+        config['client'] = user
+        config['username'] = user
+        config['password'] = pswd
+        config['smb_path'] = path
+        with open('my_config.json', 'w') as f:
+            json.dump(config, f, indent=2)
+        self.dismiss()
 
 
-class Log(Button):
+class Status(Button):
     txt = StringProperty('Connection %s' % ':)' if Synchro.is_connected() else ':(')
+
+    def on_press(self, **kwargs):
+        pop = LoginPopup()
+        pop.open()
 
 
 class MainWidget(Carousel):
+
     def update_tab(self):
         if self.children[0].children[0].__class__ == Table().__class__:
             Tab = self.children[0].children[0].__class__
@@ -294,7 +322,6 @@ class InspectorBudgetApp(App):
             os.mkdir(data_path)
 
         return MainWidget()
-
 
 if __name__ == '__main__':
     InspectorBudgetApp().run()

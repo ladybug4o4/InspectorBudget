@@ -4,7 +4,10 @@ import json
 
 def load_config(parm=False):
     # read config data
-    with open(os.path.join(os.getcwd(), "config.json")) as config_file:
+    path = os.path.join(os.getcwd(), "my_config.json")
+    if not os.path.exists(path):
+        os.system('cp config.json my_config.json')
+    with open(path) as config_file:
         conf = json.load(config_file)
     return conf[parm] if parm else conf
 

@@ -69,6 +69,9 @@ class Synchro(BoxLayout):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.setup()
+
+    def setup(self):
         config = load_config()
         self.smb_path = config["smb_path"]
         self.device_path = os.path.join(os.getcwd(), config["device_path"])
@@ -86,33 +89,29 @@ class Synchro(BoxLayout):
                                     use_ntlm_v2=True,
                                     is_direct_tcp=True)
         isok = self.server.connect(self.ip, 139)
-        if isok:
-            print('isok')
-        else:
-            print('not ok')
-
-    def listFiles(self):
-        self.connect()
-        files = self.server.listPath(self.share_name, self.smb_path)
-        filenames = [f.filename for f in files]
-        self.server.close()
-        filenames = [f for f in filenames if (len(f) == 10 and f[2] == '_')]
-        filenames.sort()
-        return filenames
 
     def target_path(self, fname):
         return os.path.join(self.device_path, fname)
 
     def download(self, k=0, names=None):
+        self.setup()
+        isok = self.connect()
         # k=0 -> download all, k>0 -> download k files.
         if self.is_connected():
-            files = self.listFiles()
+            try:
+                files = self.server.listPath(self.share_name, self.smb_path)
+            except:
+                self.txt_dwn = 'Bad password :('
+                return False
+            files = [f.filename for f in files]
+            files = [f for f in files if (len(f) == 10 and f[2] == '_')]
+            files.sort()
             if k>0:
                 files = files[-k:]
             if isinstance(names, type(None)):
                 names = files
             nrows = []
-            self.connect()
+
             dwn = []
             for smb_file_name in files:
                 if smb_file_name in names:
@@ -130,6 +129,7 @@ class Synchro(BoxLayout):
             self.txt_dwn = 'Data \n%s\n successfully downloaded (items number: \n%s)' % (dwn, nrows)
         else:
             self.txt_dwn = 'Connection error :('
+
 
     def concatenate_csv(self, target, source):
         if os.path.exists(target):
@@ -161,6 +161,7 @@ class Synchro(BoxLayout):
         return n1, len(all_data)
 
     def send(self):
+        self.setup()
         data_files = os.listdir(self.device_path)
         data_tmp_files = [f for f in data_files if f[-3:] == 'tmp']
         data_txt_files = [f.split('.')[0]+'.json' for f in data_tmp_files]
@@ -204,5 +205,4 @@ class Synchro(BoxLayout):
 if __name__=='__main__':
     print('Synchro')
     s=Synchro()
-    print(s.listFiles())
     print(s.is_connected())
