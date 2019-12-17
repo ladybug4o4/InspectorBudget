@@ -1,16 +1,14 @@
 import json
 from datetime import datetime, date
-import csv
 import os
-from kivy.core.window import Window
+import requests
 from kivy.uix.carousel import Carousel
 from kivy.uix.popup import Popup
 
 from kivy.properties import StringProperty, ObjectProperty
-from kivy.uix.textinput import TextInput
 from kivy.uix.recycleview import RecycleView
 
-from datepicker.datepicker import DatePicker
+from datepicker.datepicker import DatePicker, DATEFORMAT
 from kivy.app import App
 from kivy.core.text import Label
 from kivy.uix.boxlayout import BoxLayout
@@ -22,9 +20,9 @@ from kivy.uix.togglebutton import ToggleButton
 from kivy.config import Config
 Config.set('kivy', 'keyboard_mode', 'systemandmulti')
 
-from utils import load_config, year_month_prev, year_month_next
+from utils import load_config, year_month_prev, year_month_next, datename
 from multiexpressionbutton import MultiExpressionButton
-from synch import Synchro
+from synch import SynchroRouter, SynchroAPI
 
 
 class Date(BoxLayout):
@@ -44,7 +42,7 @@ class Date(BoxLayout):
         ## TODO zle sie zmienia
         if self.tb.state == 'down':
             self.dp.last_text = self.dp.text
-            weekname = datetime.strftime(datetime.strptime(self.dp.yesterday, '%d.%m.%Y'), '%a')
+            weekname = datetime.strftime(datetime.strptime(self.dp.yesterday, DATEFORMAT), '%a')
             self.dp.text = weekname + ', ' + self.dp.yesterday
         else:
             self.dp.text = self.dp.last_text
@@ -55,12 +53,12 @@ class Date(BoxLayout):
 
 class Category(Spinner):
     with open('categories.json', 'r') as f:
-        categories = json.load(f)
-    vals = {v['icon'] + '  ' + k for k, v in categories.items()}
+        values = json.load(f)
+    vals = {v['icon'] + '  ' + k for k, v in values.items()}
 
     kv_vals = {}
-    kv_vals["-"] = [v['icon'] + "  " + k for k,v in categories.items() if v['type'] == '-']
-    kv_vals["+"] = [v['icon'] + "  " + k for k,v in categories.items() if v['type'] == '+']
+    kv_vals["-"] = [v['icon'] + "  " + k for k,v in values.items() if v['type'] == '-']
+    kv_vals["+"] = [v['icon'] + "  " + k for k,v in values.items() if v['type'] == '+']
 
 
 class Save(Button):
@@ -70,6 +68,7 @@ class Save(Button):
 
         amount = self.parent.parent.ids.amount.text
         if len(amount):
+
             category = self.parent.parent.ids.category.text
             note = self.parent.parent.ids.note.text
             day = self.parent.parent.ids.date.dp.text.split(', ')[-1]
@@ -79,15 +78,13 @@ class Save(Button):
                 "amount": float(amount)*is_salary,
                 "date": day,
                 "note": note.replace('\n', '').replace(',', ''),
-                "category": category.split('  ')[-1]
+                "category": Category.values[category.split('  ')[-1]]['id']
             }
 
-            data = Data(filename='%s_%s' % (day[-2:], day[3:5]))
+            data = Data(filename=datename(day))
             print(row)
             data.save(row)
             self.restart_setup()
-        else:
-            self.text = '"Ale co? :P"'
 
     def restart_setup(self):
         self.parent.parent.ids.date.reset()
@@ -105,7 +102,7 @@ class Undo(MultiExpressionButton):
         if any([ x.endswith('tmp') for x in files]):
             print('COFAM')
             day = self.parent.parent.ids.date.dp.text.split(',')[1][1:]
-            data = Data(filename='%s_%s' % (day[-2:], day[3:5]))
+            data = Data(filename=datename(day))
             with open(data.tmp_path, 'r') as f:
                 lines = json.load(f)
             if len(lines) > 1:
@@ -114,7 +111,7 @@ class Undo(MultiExpressionButton):
             else:
                 os.remove(data.tmp_path)
             pop = Popup()
-            pop.title = ''
+            pop.title = 'Komunikat'
             pop.separator_height = 0
             pop.size_hint = (.5, .35)
             pop.content = Button(text = 'Operacja cofnięta')
@@ -122,9 +119,9 @@ class Undo(MultiExpressionButton):
             pop.open()
         else:
             pop = Popup()
-            pop.title = ''
+            pop.title = 'Komunikat'
             pop.separator_height = 0
-            pop.size_hint = (.5, .35)
+            pop.size_hint = (.6, .15)
             pop.content = Button(text='Brak nowych wpisów')
             pop.content.bind(on_press=pop.dismiss)
             pop.open()
@@ -199,20 +196,17 @@ class Data:
         try:
             with open(self.txt_path, 'r') as f:
                 df0 = json.load(f)
-                # df0 = csv.reader(f)
-                # df0 = [i for i in df0 if len(i) == 4]
+            df0 = sorted(df0, key=lambda x: x['date'], reverse=True)
         except FileNotFoundError:
             df0 = []
 
         try:
             with open(self.tmp_path, 'r') as f:
                 df = json.load(f)
-                # df = csv.reader(f)
-                # df = [i for i in df if len(i) == 4]
+                df.reverse()
         except FileNotFoundError:
             df = []
-        df = df + df0
-        self.df = self.sort(df)
+        self.df = df + df0
 
     def save(self, row):
         try:
@@ -223,14 +217,6 @@ class Data:
         data.append(row)
         with open(self.tmp_path, 'w') as f:
             json.dump(data, f, indent=2)
-
-        # with open(self.tmp_path, 'a') as f:
-        #     f.write(row)
-
-
-    def sort(self, df):
-        # data = [i for i in df if len(i) == 4]
-        return sorted(df, key=lambda x: x['date'],  reverse=True)
 
 
 class Table(BoxLayout):pass
@@ -245,11 +231,13 @@ class TableContent(RecycleView):
 
     def clean_data(self, row):
         date, category, note, amount = row['date'], row['category'], row['note'], row['amount']
-        # amount, date, note, category = row.values()
-        date = date.split('.')
+        date = date.split('-')
         date = date[0] + '/' + date[1]
-        icon = Category.categories[category]['icon']
-        icon = '[size=40sp][color=#e9efb1]%s[/color][/size]' % icon
+        if type(category) == str:
+            icon = Category.values[category]['icon']
+        else:
+            icon = [ v['icon'] for k,v in Category.values.items() if v['id'] == category]
+        icon = '[size=40sp][color=#e9efb1]%s[/color][/size]' % icon[0]
 
         i, n = 0, 10
         if not isinstance(note, str):
@@ -272,28 +260,100 @@ class TableContent(RecycleView):
         self.mnth_tot = self.month_total()
 
 
+
+class Synchro(BoxLayout):
+    txt_dwn = StringProperty('\u21CA Ściągnij pół roku')
+    txt_snd = StringProperty('\u21C8 Wyślij nowe wpisy')
+
+    @staticmethod
+    def is_connected():
+        try:
+            requests.get('http://' + load_config("router_ip"), timeout=1)
+            return True
+        except requests.ConnectionError as err:
+            return False
+
+    def clear_all(self):
+        path = load_config()['device_path']
+        for f in os.listdir(path):
+            os.remove(os.path.join(path, f))
+
+    def download(self, months):
+        try:
+            type = self.children[0].children[-1].type
+            if type == '':
+                self.txt_dwn = 'Ustaw ustawienia'
+            else:
+                if type == 'router':
+                    s = SynchroRouter()
+                else:
+                    s = SynchroAPI()
+                names, nrows = s.download(months)
+                self.txt_dwn = 'Dane %s\nszczęśliwie ściągnięte (liczba wpisów: \n%s)' % \
+                           (names, nrows)
+        except Exception as e:
+            e = str(e)
+            print(e)
+            self.txt_dwn = 'Problem z połączeniem. Sprawdź ustawienia.'
+
+    def send(self):
+        data_files = os.listdir(load_config('device_path'))
+        data_tmp_files = [f for f in data_files if f[-3:] == 'tmp']
+        if len(data_tmp_files) > 0:
+            try:
+                if hasattr(self.children[0].children[-1], 'type'):
+                    type = self.children[0].children[-1].type
+                    print(type)
+                    if type == 'router':
+                        s = SynchroRouter()
+                    else:
+                        s = SynchroAPI()
+                    self.txt_snd = s.send()
+                else:
+                    self.txt_snd = 'Ustaw ustawienia'
+            except Exception as e:
+                e = str(e)
+                print(e)
+                self.txt_snd = 'Problem z połączeniem. Sprawdź ustawienia.'
+        else:
+            self.txt_snd = 'Nic nowego.'
+
+
 class LoginPopup(Popup):
-    def save(self):
+    def __init__(self, caller, **kwargs):
+        self.caller = caller
+        super(LoginPopup, self).__init__(**kwargs)
+
+    def _save(self):
         user = self.ids.user.text
         pswd = self.ids.pswd.text
         path = self.ids.path.text
+        ip = self.ids.ip.text
+        ip_name = self.ids.ip_name.text
+        router_ip = self.ids.router_ip.text
         with open('config.json', 'r') as f:
             config = json.load(f)
-        config['share_name'] = user
-        config['client'] = user
+        config['router_ip'] = router_ip
+        config['smb_path'] = path
         config['username'] = user
         config['password'] = pswd
-        config['smb_path'] = path
+        config['share_name'] = user
+        config['client'] = user
+        config['api_url'] = 'http://' + ip + '/' + ip_name + '/'
         with open('my_config.json', 'w') as f:
             json.dump(config, f, indent=2)
+
+    def save(self, type):
+        self.caller.type = type
+        self._save()
         self.dismiss()
 
 
 class Status(Button):
-    txt = StringProperty('Connection %s' % ':)' if Synchro.is_connected() else ':(')
+    txt = StringProperty('Połączenie %s' % ':)' if Synchro.is_connected() else ':(')
 
     def on_press(self, **kwargs):
-        pop = LoginPopup()
+        pop = LoginPopup(caller=self)
         pop.open()
 
 

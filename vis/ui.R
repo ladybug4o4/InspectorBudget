@@ -25,7 +25,8 @@ dashboardPage(
                   width=3, height='422px'),
               box(
                   selectInput('cat', 'Wybierz kategorie:', CATEGORIES, c('Zakupy', 'Rachunki', 'Paliwo i transport'), multiple = TRUE),
-                  plotOutput("categories", width="100%"), width=11)
+                  plotOutput("categories", width="100%"),
+                  radioButtons('type', '', c('Wydatki' ,'Przychody'), selected='Wydatki', inline=TRUE), width=11)
               )
           ),
           tabItem(tabName = "data", active=TRUE, fluidRow( box(dataTableOutput("data"), width=12) ) )

@@ -37,16 +37,33 @@ function(input, output, session) {
     
   output$categories <- renderPlot({
     agg1 <- agg_data_categories()
-    agg1 <- agg1[agg1$amount<0,]
+    if(input$type == 'Wydatki'){
+        agg1 <- agg1[agg1$amount<0,] 
+        colors <- RColorBrewer::brewer.pal(11, 'Paired')
+        names(colors) <- c('Rachunki', 'Zakupy',
+                           'Paliwo i transport', 'Auto', 
+                           'Dzieci', 'Prezent', 
+                           'Sport i relaks', 
+                           'Przyjemności i jedzenie na mieście',
+                           'Sprzęty domowe', 'Inne wydatki',
+                           'Podatki')
+    }else{
+        agg1 <- agg1[agg1$amount>0,]
+        colors <- RColorBrewer::brewer.pal(3, 'Paired')
+        names(colors) <- c('Kasia', 'Hepterakt', 'Inne dochody')
+    }
+      
+      
     if(!(any('*' %in% input$cat))){
         agg1 <- agg1[agg1$name %in% input$cat,]
         agg1$name <- factor(agg1$name, levels=input$cat)
     }
-    ggplot(agg1) + geom_area(aes(x=x, y=I(-amount), fill=as.factor(name), group=name),
-                                                  position='stack', stat='identity') + 
+    ggplot(agg1) + geom_area(aes(x=x, y=I(abs(amount)), fill=name, group=name),
+                                                  position='stack') + 
     theme(axis.text.x = element_text(angle = 90)) +
-    scale_fill_brewer(palette='Paired') +
-    labs(fill='Kategoria', x='', y='')
+    scale_fill_manual(values=colors) +
+    labs(fill='Kategoria', x='', y='') + 
+    scale_y_continuous(breaks=seq(-10000, 100000, 500))
   })
   
   ########################### TAB 2 - DATA ###########################

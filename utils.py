@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime
 
 
 def load_config(parm=False):
@@ -28,6 +29,10 @@ def year_month_next(year, month, k, out=[]):
     else:
         out.extend([(year, m) for m in range(month, 13)])
         return year_month_next(year+1, 1, k - 13 + month, out)
+
+def datename(day):
+    from datepicker.datepicker import DATEFORMAT
+    return datetime.strftime(datetime.strptime(day, DATEFORMAT), '%y_%m')
 
 
 if __name__ == '__main__':

@@ -61,6 +61,7 @@ Builder.load_string(
 )
 ###########################################################
 
+DATEFORMAT = "%Y-%m-%d"
 
 class DatePicker(MyTextInput):
     """ 
@@ -85,7 +86,7 @@ class DatePicker(MyTextInput):
     def init_ui(self):
 
         text = today_date()
-        weekname = datetime.strftime(datetime.strptime(text, '%d.%m.%Y'), '%a')
+        weekname = datetime.strftime(datetime.strptime(text, DATEFORMAT), '%a')
         self.text = weekname + ', ' + text
         self.yesterday = yesterday_date()
         # Calendar
@@ -110,8 +111,9 @@ class DatePicker(MyTextInput):
 
     def update_value(self, inst):
         """ Update textinput value on popup close """
-        text = "%02d.%02d.%s" % tuple(self.cal.active_date)
-        weekname = datetime.strftime(datetime.strptime(text, '%d.%m.%Y'), '%a')
+        d, m, Y = self.cal.active_date
+        text = "%s-%02d-%02d" % (Y, m, d)
+        weekname = datetime.strftime(datetime.strptime(text, DATEFORMAT), '%a')
         self.text = weekname + ', ' + text
         self.focus = False
 
@@ -490,14 +492,15 @@ def today_date_list():
 
 def today_date():
     """ Return today date dd.mm.yyyy like pon, 28.02.2015 """
-
-    return datetime.now().strftime("%d.%m.%Y")
+    # return datetime.now().strftime("%d.%m.%Y")
+    return datetime.now().strftime(DATEFORMAT)
 
 
 def yesterday_date():
     """ Return today date dd.mm.yyyy like 28.02.2015 """
     day = datetime.now() - timedelta(days=1)
-    return day.strftime("%d.%m.%Y")
+    # return day.strftime("%d.%m.%Y")
+    return day.strftime(DATEFORMAT)
 
 
 if __name__ == "__main__":

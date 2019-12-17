@@ -4,68 +4,62 @@ import requests
 from datetime import datetime
 from tempfile import NamedTemporaryFile
 
-from kivy.properties import StringProperty
-from kivy.uix.boxlayout import BoxLayout
 from smb.SMBConnection import SMBConnection
-
 from utils import load_config, year_month_prev
 
-#
-# class Synchro2:#(BoxLayout):
-#     # txt_dwn = StringProperty('\u21CA Download from Samba')
-#     # txt_snd = StringProperty('\u21C8 Send to Samba')
-#
-#     def __init__(self, **kwargs):
-#         super().__init__(**kwargs)
-#         config = load_config()
-#         self.url = config['api_url'] + 'entries/'
-#         self.device_path = config['device_path']
-#
-#     def download(self, months=0):
-#         t = 30
-#         try:
-#             if months == 0:
-#                 r = requests.get(self.url, timeout=t)
-#                 data = r.json()
-#             elif months > 0:
-#                 year_month_list = year_month_prev(
-#                     datetime.today().year,
-#                     datetime.today().month,
-#                     months, [])
-#                 data = []
-#                 for ym in year_month_list:
-#                     r = requests.get(self.url + '?year=%s&month=%s' % ym, timeout=t)
-#                     data.extend(r.json())
-#             else:
-#                 print('k should be positive value or 0 (for all data to download')
-#                 return 0
-#
-#             with open('data.json', 'w') as fp:
-#                 json.dump(data, fp, indent=2)
-#             return data
-#         except Exception as e:
-#             e = str(e)
-#             print(e)
-#             print(e[:e.index('(')])
-#             # self.txt_dwn = str(e)
-#
-#
-#     def send(self, records):
-#         try:
-#             ids = []
-#             for rec in records:
-#                 r = requests.post(self.url, rec)
-#                 ids.append(r.json()['id'])
-#             return ids
-#         except Exception as e:
-#             e = str(e)
-#             print(e)
-#             print(e[:e.index('(')])
+
+class SynchroAPI():
+
+    def __init__(self, **kwargs):
+        super(SynchroAPI).__init__(**kwargs)
+        config = load_config()
+        self.url = config['api_url'] + 'entries/'
+        self.device_path = config['device_path']
+
+    def download(self, months=0):
+        t = 30
+        if months == 0:
+            ##TODO: save as separate files
+            r = requests.get(self.url, timeout=t)
+            data = r.json()['results']
+            with open('data/data.json', 'w') as fp:
+                json.dump(data, fp, indent=1)
+        elif months > 0:
+            year_month_list = year_month_prev(
+                datetime.today().year,
+                datetime.today().month,
+                months, [])
+            files = {}
+            for ym in year_month_list:
+                r = requests.get(self.url + '?year=%s&month=%s' % ym, timeout=t)
+                r = r.json()['results']
+                file_name = '%s_%.2d.json' % (str(ym[0])[-2:], ym[1])
+                files[file_name] = len(r)
+                with open('data/' + file_name, 'w') as fp:
+                    json.dump(r, fp, indent=1)
+            return str(list(files.keys())), str(list(files.values()))
+        else:
+            print('months should be positive value or 0 (for all data to download')
+            return 0
 
 
-class Synchro(BoxLayout):
-    txt_dwn = StringProperty('\u21CA Download from Samba')
-    txt_snd = StringProperty('\u21C8 Send to Samba')
+    def send(self):
+        data_files = os.listdir(self.device_path)
+        data_tmp_files = [f for f in data_files if f[-3:] == 'tmp']
+        ids = []
+        for file in data_tmp_files:
+            pth = 'data/' + file
+            with open(pth, 'r') as fp:
+                records = json.load(fp)
+            for rec in records:
+                r = requests.post(self.url, rec)
+                ids.append(r.json()['id'])
+            os.remove(pth)
+        txt_snd = 'Nowe wpisy nr: %s' % str(ids)
+        return txt_snd
+
+
+class SynchroRouter():
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -93,42 +87,35 @@ class Synchro(BoxLayout):
     def target_path(self, fname):
         return os.path.join(self.device_path, fname)
 
-    def download(self, k=0, names=None):
+    def download(self, months=0, names=None):
         self.setup()
-        isok = self.connect()
-        # k=0 -> download all, k>0 -> download k files.
-        if self.is_connected():
-            try:
-                files = self.server.listPath(self.share_name, self.smb_path)
-            except:
-                self.txt_dwn = 'Bad password :('
-                return False
-            files = [f.filename for f in files]
-            files = [f for f in files if (len(f) == 10 and f[2] == '_')]
-            files.sort()
-            if k>0:
-                files = files[-k:]
-            if isinstance(names, type(None)):
-                names = files
-            nrows = []
+        # months=0 -> download all, months>0 -> download months files.
+        self.connect()
+        files = self.server.listPath(self.share_name, self.smb_path)
+        files = [f.filename for f in files]
+        files = [f for f in files if (len(f) == 10 and f[2] == '_')]
+        files.sort()
+        if months>0:
+            files = files[-months:]
+        if isinstance(names, type(None)):
+            names = files
+        nrows = []
 
-            dwn = []
-            for smb_file_name in files:
-                if smb_file_name in names:
-                    with NamedTemporaryFile() as tmp:
-                        fname = os.path.join(self.smb_path, smb_file_name)
-                        _, filesize = self.server.retrieveFile(self.share_name, fname, tmp)
-                        tmp.file.seek(0)
-                        smb_file_content = tmp.file.read().decode()
-                        with open(self.target_path(smb_file_name), 'w') as f:
-                            f.write(smb_file_content)
-                            n = sum([ 1 for i in smb_file_content if i == "{"])
-                            nrows.append(n)
-                        dwn.append(smb_file_name)
-            self.server.close()
-            self.txt_dwn = 'Data \n%s\n successfully downloaded (items number: \n%s)' % (dwn, nrows)
-        else:
-            self.txt_dwn = 'Connection error :('
+        dwn_names = []
+        for smb_file_name in files:
+            if smb_file_name in names:
+                with NamedTemporaryFile() as tmp:
+                    fname = os.path.join(self.smb_path, smb_file_name)
+                    _, filesize = self.server.retrieveFile(self.share_name, fname, tmp)
+                    tmp.file.seek(0)
+                    smb_file_content = tmp.file.read().decode()
+                    with open(self.target_path(smb_file_name), 'w') as f:
+                        f.write(smb_file_content)
+                        n = sum([ 1 for i in smb_file_content if i == "{"])
+                        nrows.append(n)
+                    dwn_names.append(smb_file_name)
+        self.server.close()
+        return dwn_names, nrows
 
 
     def concatenate_csv(self, target, source):
@@ -165,44 +152,32 @@ class Synchro(BoxLayout):
         data_files = os.listdir(self.device_path)
         data_tmp_files = [f for f in data_files if f[-3:] == 'tmp']
         data_txt_files = [f.split('.')[0]+'.json' for f in data_tmp_files]
-        if len(data_tmp_files) > 0:
-            self.download(names=data_txt_files)
-            for tmp_file in data_tmp_files:
-                tmp_name, ext = tmp_file.split('.')
-                target = os.path.join(self.device_path, tmp_name + '.json')
-                source = os.path.join(self.device_path, tmp_file)
-                n1, n2 = self.concatenate_json(target, source)
-                self.txt_snd = 'File %s had %s records, now it has %s.' % (
-                    tmp_name, n1, n2
-                )
-                with open(target, 'rb') as data:
-                    try:
-                        self.connect()
-                        self.server.storeFile(self.share_name,
-                                              os.path.join(self.smb_path, tmp_name+'.json'),
-                                              data)
-                        self.server.close()
-                        os.remove(source)
-                    except Exception as e:
-                        self.txt_snd = 'Connection problem'
-        else:
-            self.txt_snd = 'Nothing to add.'
 
-    def clear_all(self):
-        path = load_config()['device_path']
-        for f in os.listdir(path):
-            os.remove(os.path.join(path, f))
-
-    @staticmethod
-    def is_connected():
-        try:
-            requests.get('http://' + load_config("router_ip"), timeout=1)
-            return True
-        except requests.ConnectionError as err:
-            return False
+        self.download(names=data_txt_files)
+        file_names = []
+        N1 = []
+        N2 = []
+        for tmp_file in data_tmp_files:
+            tmp_name, ext = tmp_file.split('.')
+            target = os.path.join(self.device_path, tmp_name + '.json')
+            source = os.path.join(self.device_path, tmp_file)
+            n1, n2 = self.concatenate_json(target, source)
+            file_names.append(tmp_file)
+            N1.append(n1)
+            N2.append(n2)
+            txt_snd = 'Plik %s miał %s wpisów, obecnie ma %s.' % (tmp_name, n1, n2)
+            with open(target, 'rb') as data:
+                    self.connect()
+                    self.server.storeFile(self.share_name,
+                                          os.path.join(self.smb_path, tmp_name+'.json'),
+                                          data)
+                    self.server.close()
+                    os.remove(source)
+        txt_snd = 'Plik(i) %s miał(y) %s wpisów,\nobecnie ma(ją) %s.' % (str(file_names), str(N1), str(N2))
+        return txt_snd
 
 
 if __name__=='__main__':
     print('Synchro')
-    s=Synchro()
-    print(s.is_connected())
+    # s=Synchro()
+    # print(s.is_connected())

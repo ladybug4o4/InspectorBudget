@@ -1,10 +1,10 @@
 {
   "device_path": "data/",
-  "smb_path": "/usb1_1/inspectorbudget/",
+  "smb_path": "",
   "client": "",
   "router_ip": "192.168.1.1",
   "username": "",
   "password": "",
   "share_name": "",
-//  "api_url": "http://192.168.1.111:8000/inspectorbudget/"
+  "api_url": ""
 }
