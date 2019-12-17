@@ -6,5 +6,6 @@
   "username": "",
   "password": "",
   "share_name": "",
-  "api_url": ""
+  "api_url": "",
+  "type": ""
 }

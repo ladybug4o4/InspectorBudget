@@ -280,17 +280,22 @@ class Synchro(BoxLayout):
 
     def download(self, months):
         try:
-            type = self.children[0].children[-1].type
-            if type == '':
+            if not os.path.exists('my_config.json'):
                 self.txt_dwn = 'Ustaw ustawienia'
             else:
+                type = load_config('type')
                 if type == 'router':
                     s = SynchroRouter()
-                else:
+                    names, nrows = s.download(months)
+                    self.txt_dwn = 'Dane %s\nszczęśliwie ściągnięte (liczba wpisów: \n%s)' % \
+                               (names, nrows)
+                elif type == 'api':
                     s = SynchroAPI()
-                names, nrows = s.download(months)
-                self.txt_dwn = 'Dane %s\nszczęśliwie ściągnięte (liczba wpisów: \n%s)' % \
-                           (names, nrows)
+                    names, nrows = s.download(months)
+                    self.txt_dwn = 'Dane %s\nszczęśliwie ściągnięte (liczba wpisów: \n%s)' % \
+                               (names, nrows)
+                else:
+                    self.txt_dwn = 'Ustaw ustawienia.'
         except Exception as e:
             e = str(e)
             print(e)
@@ -301,20 +306,22 @@ class Synchro(BoxLayout):
         data_tmp_files = [f for f in data_files if f[-3:] == 'tmp']
         if len(data_tmp_files) > 0:
             try:
-                if hasattr(self.children[0].children[-1], 'type'):
-                    type = self.children[0].children[-1].type
-                    print(type)
+                if not os.path.exists('my_config.json'):
+                    self.txt_dwn = 'Ustaw ustawienia'
+                else:
+                    type = load_config('type')
                     if type == 'router':
                         s = SynchroRouter()
-                    else:
+                        self.txt_snd = s.send()
+                    elif type == 'api':
                         s = SynchroAPI()
-                    self.txt_snd = s.send()
-                else:
-                    self.txt_snd = 'Ustaw ustawienia'
+                        self.txt_snd = s.send()
+                    else:
+                        self.txt_snd = 'Ustaw ustawienia.'
             except Exception as e:
                 e = str(e)
                 print(e)
-                self.txt_snd = 'Problem z połączeniem. Sprawdź ustawienia.'
+                self.txt_snd = 'Problem z połączeniem.'
         else:
             self.txt_snd = 'Nic nowego.'
 
@@ -324,7 +331,8 @@ class LoginPopup(Popup):
         self.caller = caller
         super(LoginPopup, self).__init__(**kwargs)
 
-    def _save(self):
+    def save(self, type):
+        self.caller.type = type
         user = self.ids.user.text
         pswd = self.ids.pswd.text
         path = self.ids.path.text
@@ -339,13 +347,10 @@ class LoginPopup(Popup):
         config['password'] = pswd
         config['share_name'] = user
         config['client'] = user
+        config['type'] = type
         config['api_url'] = 'http://' + ip + '/' + ip_name + '/'
         with open('my_config.json', 'w') as f:
             json.dump(config, f, indent=2)
-
-    def save(self, type):
-        self.caller.type = type
-        self._save()
         self.dismiss()
 
 
