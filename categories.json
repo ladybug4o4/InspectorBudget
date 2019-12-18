@@ -1,0 +1,62 @@
+{
+ "Zakupy": {
+  "id": 1,
+  "icon": "\u2696",
+  "type": "-"
+ },
+ "Rachunki": {
+  "id": 3,
+  "icon": "\u26a1",
+  "type": "-"
+ },
+ "Inne wydatki": {
+  "id": 4,
+  "icon": "\u2604",
+  "type": "-"
+ },
+ "Paliwo i transport": {
+  "id": 5,
+  "icon": "\u2652",
+  "type": "-"
+ },
+ "Przyjemno\u015bci i jedzenie na mie\u015bcie": {
+  "id": 7,
+  "icon": "\u2615",
+  "type": "-"
+ },
+ "Auto": {
+  "id": 8,
+  "icon": "\u2699",
+  "type": "-"
+ },
+ "Praca1": {
+  "id": 9,
+  "icon": "\u265b",
+  "type": "+"
+ },
+ "Sprz\u0119ty domowe": {
+  "id": 10,
+  "icon": "\u260e",
+  "type": "-"
+ },
+ "Sport i relaks": {
+  "id": 11,
+  "icon": "\u2600",
+  "type": "-"
+ },
+ "Inne dochody": {
+  "id": 12,
+  "icon": "\u265f",
+  "type": "+"
+ },
+ "Praca2": {
+  "id": 13,
+  "icon": "\u265a",
+  "type": "+"
+ },
+ "Prezent": {
+  "id": 15,
+  "icon": "\u2665",
+  "type": "-"
+ }
+}

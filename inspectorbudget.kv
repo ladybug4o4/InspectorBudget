@@ -1,5 +1,6 @@
 # python -m pip install kivy_garden.graph --extra-index-url https://kivy-garden.github.io/simple/
 #:set default_font_size "36sp"
+#:set default_font_name "DejaVuSans.ttf"
 #:import Factory kivy.factory.Factory
 
 #:set color_button app.col['zolty']  # brown
@@ -16,7 +17,7 @@
 
 <MySpinnerOption@SpinnerOption>:
     background_color: color_button if self.state == 'down' else color_button_pressed
-    background_down: 'atlas://data/images/defaulttheme/button'
+#    background_down: 'atlas://data/images/defaulttheme/button'
     color: color_font
     font_size: sp(20)
     font_name: 'DejaVuSans.ttf'
@@ -27,6 +28,7 @@
 
 <NumPadButton@Button>:
     font_size: '16dp'
+    font_name: 'RobotoMono-Regular'
     bold: True
 
 <NumPadWidget>:
@@ -38,6 +40,7 @@
             Label:
                 id: num_label
                 text: ''
+                font_name: 'RobotoMono-Regular'
         BoxLayout:
             size_hint_y: 5
             orientation: 'vertical'
@@ -107,10 +110,7 @@
                         text: 'Enter'
 
 
-
-
 <NewEntry>:
-    id: 'newentry'
     orientation: 'vertical'
     BoxLayout:
         orientation: 'horizontal'
@@ -122,6 +122,7 @@
             hint_text: 'Kwota'
             halign: 'center'
             multiline: False
+            font_name: 'RobotoMono-Regular'
         ToggleButton:
             id: minus
             text: '-'
@@ -135,33 +136,27 @@
             size_hint_x: .25
     Date:
         id: date
-    BoxLayout:
-        orientation: 'horizontal'
-        Category:
-            id: category
-            font_size: sp(26)
-            text: self.kv_vals['+'][0] if plus.state == 'down' else self.kv_vals['-'][0]
-            values: self.kv_vals['+'] if plus.state == 'down' else self.kv_vals['-']
-            option_cls: Factory.get('MySpinnerOption')
-            background_color: app.col['item']
-            background_down: ''
-            background_normal: ''
-            markup: True
-            text_size : self.width, None
-            halign: 'center'
-            size_hint_x: 90
-#        Button:
-#            text: "settings"
-#            size_hint_x: 10
-
+    Category:
+        id: category
+        font_size: sp(26)
+        text: self.kv_vals['+'][0] if plus.state == 'down' else self.kv_vals['-'][0]
+        values: self.kv_vals['+'] if plus.state == 'down' else self.kv_vals['-']
+        option_cls: Factory.get('MySpinnerOption')
+        background_color: app.col['item']
+        background_down: ''
+        background_normal: ''
+        markup: True
+        text_size : self.width, None
+        halign: 'center'
     MyTextInput:
         id: note
         hint_text: 'Notatka'
+        font_name: 'RobotoMono-Regular'
     BoxLayout:
         orientation: 'horizontal'
         Save:
-            text: 'Zapisz'
-            font_size: sp(24)
+            text: '[size=40]\u270E\u2710\u270E[/size]'
+            font_size: sp(26)
             markup: True
             size_hint_x: .85
 #            background_color: app.col['zolty']
@@ -171,6 +166,11 @@
             markup: True
             size_hint_x: None
 #            background_color: app.col['item']
+
+
+<CategoryOptions>
+    title: ''
+    size_hint: (.9, 1)
 
 
 <Item>:
@@ -285,7 +285,6 @@
 #                        size_hint_y: .2
 
 
-
 <Synchro>:
     id: 'sync'
     BoxLayout:
@@ -310,30 +309,6 @@
             on_release: root.clear_all()
             background_color: app.col['item']
             markup: True
-
-#<SynchroAPI>:
-#    BoxLayout:
-#        orientation: 'vertical'
-#        Status:
-#            text: self.txt
-#            background_color: app.col['zolty']
-#        Button:
-#            text: root.txt_dwn
-#            on_release: root.download(months=6)
-#            background_color: app.col['szary']
-#            text_size : self.width, None
-#            halign: 'center'
-#        Button:
-#            text: root.txt_snd
-#            on_release: root.send()
-#            background_color: app.col['losos']
-#            text_size : self.width, None
-#            halign: 'center'
-#        Button:
-#            text: '[size=26]\u2620[/size] Usuń dane z telefonu [size=26]\u2620[/size]'
-#            on_release: root.clear_all()
-#            background_color: app.col['item']
-#            markup: True
 
 <MainWidget>:
     on_index: root.update_tab()

@@ -25,7 +25,7 @@ source.include_exts = py,png,jpg,kv,atlas,json
 #source.exclude_dirs = tests, bin,
 
 # (list) List of exclusions using pattern matching
-source.exclude_patterns = license,images/*/*.jpg,data/*,my_config.json
+source.exclude_patterns = license,images/*/*.jpg,data/*,my_config.json,my_categories.json
 
 # (str) Application versioning (method 1)
 version = 0.3

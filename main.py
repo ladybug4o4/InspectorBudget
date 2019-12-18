@@ -2,27 +2,30 @@ import json
 from datetime import datetime, date
 import os
 import requests
+from kivy.uix.accordion import Accordion, AccordionItem
+
 from kivy.uix.carousel import Carousel
+from kivy.uix.gridlayout import GridLayout
 from kivy.uix.popup import Popup
-
-from kivy.properties import StringProperty, ObjectProperty
 from kivy.uix.recycleview import RecycleView
-
-from datepicker.datepicker import DatePicker, DATEFORMAT
+from kivy.properties import StringProperty, ObjectProperty
 from kivy.app import App
 from kivy.core.text import Label
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.spinner import Spinner
+from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
-
 from kivy.config import Config
 Config.set('kivy', 'keyboard_mode', 'systemandmulti')
 
 from utils import load_config, year_month_prev, year_month_next, datename
 from multiexpressionbutton import MultiExpressionButton
 from synch import SynchroRouter, SynchroAPI
+
+from datepicker.datepicker import DatePicker, DATEFORMAT
+
 
 
 class Date(BoxLayout):
@@ -31,7 +34,7 @@ class Date(BoxLayout):
         self.orientation = 'horizontal'
         self.dp = DatePicker()
         self.today_txt = self.dp.text
-        self.tb = ToggleButton(text='Wczoraj')
+        self.tb = ToggleButton(text='Wczoraj', font_size=20)
         self.tb.bind(on_release=self.update)
         self.add_widget(self.dp)
         self.add_widget(self.tb)
@@ -52,16 +55,172 @@ class Date(BoxLayout):
 
 
 class Category(Spinner):
-    with open('categories.json', 'r') as f:
-        values = json.load(f)
-    vals = {v['icon'] + '  ' + k for k, v in values.items()}
-
-    kv_vals = {}
-    kv_vals["-"] = [v['icon'] + "  " + k for k,v in values.items() if v['type'] == '-']
-    kv_vals["+"] = [v['icon'] + "  " + k for k,v in values.items() if v['type'] == '+']
+    def __init__(self, **kwargs):
+        super(Category, self).__init__(**kwargs)
+        if not os.path.exists('my_categories.json'):
+            os.system('cp categories.json my_categories.json')
+        self.refresh()
 
 
-class Save(Button):
+    def refresh(self):
+        with open('my_categories.json', 'r') as f:
+            names = json.load(f)
+        vals = {v['icon'] + '  ' + k for k, v in names.items()}
+
+        kv_vals = {}
+        kv_vals["-"] = [v['icon'] + "  " + k for k, v in names.items() if v['type'] == '-']
+        kv_vals["+"] = [v['icon'] + "  " + k for k, v in names.items() if v['type'] == '+']
+        self.kv_vals = kv_vals
+        self.names = names
+
+    def remove(self, name):
+        with open('my_categories.json', 'r') as f:
+            names = json.load(f)
+        _ = names.pop(name)
+        with open('my_categories.json', 'w') as f:
+            json.dump(names, f, indent=1)
+
+
+    def unification(self):
+        if type(category) == str:
+            icon = Category().names[category]['icon']
+        else:
+            icon = [ v['icon'] for k,v in Category().names.items() if v['id'] == category]
+        icon = '[size=40sp][color=#e9efb1]%s[/color][/size]' % icon[0]
+
+
+class AccordionItemRow(BoxLayout):
+    def __init__(self, kv_val, type, **kwargs):
+        super(AccordionItemRow,self).__init__(**kwargs)
+        self.orientation = 'horizontal'
+        self.kv_name = kv_val.split('  ')[-1]
+        self.type = type
+        self.add_widget(Label(text=kv_val))
+        self.b = Button(text='\u2612', size_hint_x=.15)
+        self.b.bind(on_press=self.delete)
+        self.add_widget(self.b)
+
+    def delete(self, *args, **kwargs):
+        C = Category()
+        not_removable = self.parent.parent.parent.parent.parent.parent.parent.parent.parent.parent.children[-1].children[-1].children[0].children[0].children[0].df_categories
+        if not self.kv_name in not_removable:
+            C.remove(self.kv_name)
+            self.parent.parent.parent.parent.parent.reset(self.type, **kwargs)
+        else:
+            self.b.text = ''
+
+
+class AccordionContent(AccordionItem, Category):
+
+    def __init__(self, type='-', **kwargs):
+        super(AccordionContent, self).__init__(**kwargs)
+        self.build(type)
+
+    def reset(self, type):
+        self.refresh() # category
+        self.remove_widget(self.col)
+        self.build(type)
+
+    def build(self, type):
+        self.title = type
+        self.col = BoxLayout(orientation='vertical')
+        for v in self.kv_vals[type]:
+            self.col.add_widget(AccordionItemRow(v, type))
+        self.add_widget(self.col)
+
+
+class AccordionEdit(AccordionItem):
+    def __init__(self, **kwargs):
+        super(AccordionEdit, self).__init__(**kwargs)
+        self.title = '\u270D Edytuj kategorie'
+        row_new_category = BoxLayout(orientation='vertical')
+        row_new_category.add_widget(TextInput(hint_text='Nowa kategoria'))
+        row_new_category.add_widget(Icons(size_hint_y=5))
+        b2 = BoxLayout(orientation='horizontal')
+        b2.add_widget(ToggleButton(id='category_type', group='type', text='-'))
+        b2.add_widget(ToggleButton(id='category_type', group='type', text='+'))
+        row_new_category.add_widget(b2)
+        row_new_category.add_widget(Button(text='Dodaj', on_release=self.save))
+        row_new_category.add_widget(Button(text='Wyślij/pobierz do API'))
+        row_new_category.add_widget(Label(text=''))
+        self.add_widget(row_new_category)
+
+    def get_items(self):
+        return self.children[0].children[0].children[0].children[0].children
+
+    def save(self, *args):
+        add_items = self.get_items()
+
+        # -1 Logi
+        # 0 Pobierz z API
+        # 1 Wyślij do API
+        # 2 Dodaj
+        # 3 BoxLayout -> togglebuttons
+        # 4 Icons
+        # 5 Nowa kategoria
+
+        # + add_items[2].children[0].state
+        # - add_items[2].children[1].state
+        tb = add_items[3].children
+        type = '-' if tb[1].state == 'down' else '+'
+        icon = [i.text for i in add_items[4].children if i.state == 'down']
+        category_name = add_items[5].text
+
+        if len(category_name) and len(type) and len(icon):
+            icon = icon[0]
+            with open('my_categories.json', 'r') as f:
+                categories = json.load(f)
+            categories[category_name] = {
+                'icon': icon,
+                'type': type,
+                'id': -1
+            }
+            with open('my_categories.json', 'w') as f:
+                json.dump(categories, f)
+                add_items[0].text = 'Kategoria "%s  %s" dodana jako "%s".' % (
+                    icon, category_name, type)
+
+            plus, minus = self.parent.children[1:]
+            plus.reset('+')
+            minus.reset('-')
+            for t in tb:
+                t.state = 'normal'
+            add_items[5].text = ''
+            for i in add_items[4].children:
+                i.state = 'normal'
+
+
+class Icons(GridLayout):
+    def __init__(self, **kwargs):
+        super(Icons, self).__init__(**kwargs)
+        self.cols = 7
+        icons = ['\u271A','\u273F','\u2708','\u2709','\u2638','\u2622','\u2614','\u2615',
+                 '\u2604','\u2603','\u2601','\u2600','\u2618','\u2616','\u262D','\u262E','\u2620','\u260E',
+                 '\u2663', '\u263B', '\u265A', '\u265B','\u265C','\u265D','\u265E','\u265F','\u25D5','\u25EC',
+                 '\u25F1', '\u221E','\u2706', '\u2707', '\u2652', '\u2665', '\u2696', '\u26A1']
+        for i in icons:
+            self.add_widget(ToggleButton(text=i, group='icons', markup=True))
+
+
+class CategoryOptions(Popup, Category):
+    def __init__(self, **kwargs):
+        super(CategoryOptions, self).__init__(**kwargs)
+        print(self.kv_vals)
+
+        acc = Accordion()
+        acc.orientation = 'vertical'
+        incomes = AccordionContent(type='+')
+        expenses = AccordionContent(type='-')
+        add = AccordionEdit()
+        acc.add_widget(expenses)
+        acc.add_widget(incomes)
+        acc.add_widget(add)
+        self.add_widget(acc)
+
+    # def
+
+
+class Save(MultiExpressionButton):
 
     def on_release(self):
         print('zapisuje...')
@@ -78,7 +237,7 @@ class Save(Button):
                 "amount": float(amount)*is_salary,
                 "date": day,
                 "note": note.replace('\n', '').replace(',', ''),
-                "category": Category.values[category.split('  ')[-1]]['id']
+                "category": Category().names[category.split('  ')[-1]]['id']
             }
 
             data = Data(filename=datename(day))
@@ -93,6 +252,10 @@ class Save(Button):
         self.parent.parent.ids.plus.state = 'normal'
         self.parent.parent.ids.minus.state = 'down'
         self.parent.parent.ids.category.text = self.parent.parent.ids.category.values[0]
+
+    def on_long_press(self):
+        pop = CategoryOptions()
+        pop.open()
 
 
 class Undo(MultiExpressionButton):
@@ -113,7 +276,7 @@ class Undo(MultiExpressionButton):
             pop = Popup()
             pop.title = 'Komunikat'
             pop.separator_height = 0
-            pop.size_hint = (.5, .35)
+            pop.size_hint = (.5, .4)
             pop.content = Button(text = 'Operacja cofnięta')
             pop.content.bind(on_press=pop.dismiss)
             pop.open()
@@ -121,7 +284,7 @@ class Undo(MultiExpressionButton):
             pop = Popup()
             pop.title = 'Komunikat'
             pop.separator_height = 0
-            pop.size_hint = (.6, .15)
+            pop.size_hint = (.6, .2)
             pop.content = Button(text='Brak nowych wpisów')
             pop.content.bind(on_press=pop.dismiss)
             pop.open()
@@ -207,6 +370,7 @@ class Data:
         except FileNotFoundError:
             df = []
         self.df = df + df0
+        self.category_unification()
 
     def save(self, row):
         try:
@@ -217,6 +381,18 @@ class Data:
         data.append(row)
         with open(self.tmp_path, 'w') as f:
             json.dump(data, f, indent=2)
+
+    def category_unification(self):
+        C = Category().names
+        for row in self.df:
+            if type(row['category']) == int:
+                try:
+                    tmp = { v['id']: k for k,v in C.items()}
+                    name =  tmp[row['category']]
+                    row['category'] = name
+                except:
+                    pass
+
 
 
 class Table(BoxLayout):pass
@@ -234,10 +410,10 @@ class TableContent(RecycleView):
         date = date.split('-')
         date = date[0] + '/' + date[1]
         if type(category) == str:
-            icon = Category.values[category]['icon']
+            icon = Category().names[category]['icon']
         else:
-            icon = [ v['icon'] for k,v in Category.values.items() if v['id'] == category]
-        icon = '[size=40sp][color=#e9efb1]%s[/color][/size]' % icon[0]
+            icon = [ v['icon'] for k,v in Category().names.items() if v['id'] == category]
+        icon = '[size=40sp][color=#e9efb1]%s[/color][/size]' % icon[0] if len(icon) else ''
 
         i, n = 0, 10
         if not isinstance(note, str):
@@ -255,10 +431,10 @@ class TableContent(RecycleView):
         data = Data(filename='%d_%.2d' % (self.year%2000, self.month))
         data.read()
         self.df = data.df
+        self.df_categories = set([i['category'] for i in data.df])
         all_data = sum([self.clean_data(r) for r in self.df], [])
         self.data =  [{'text': str(r)} for r in all_data]
         self.mnth_tot = self.month_total()
-
 
 
 class Synchro(BoxLayout):
