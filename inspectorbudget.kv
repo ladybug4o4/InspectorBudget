@@ -28,7 +28,6 @@
 
 <NumPadButton@Button>:
     font_size: '16dp'
-    font_name: 'RobotoMono-Regular'
     bold: True
 
 <NumPadWidget>:
@@ -40,7 +39,6 @@
             Label:
                 id: num_label
                 text: ''
-                font_name: 'RobotoMono-Regular'
         BoxLayout:
             size_hint_y: 5
             orientation: 'vertical'
@@ -168,11 +166,6 @@
 #            background_color: app.col['item']
 
 
-<CategoryOptions>
-    title: ''
-    size_hint: (.9, 1)
-
-
 <Item>:
     canvas.before:
         Color:
@@ -198,26 +191,32 @@
 
 <Table>:
     id: maintable
+    orientation: 'vertical'
     BoxLayout:
-        orientation: 'vertical'
-        BoxLayout:
-            orientation: 'horizontal'
-            size_hint_y: .1
-            Month:
-                size_hint_x: .4
-            Sumup:
-                id: sum
-                color: app.col['morski']
-                font_size: sp(28)
-                size_hint_x: .6
-                canvas:
-                    Color:
-                        rgba: (246/255., 205/255., 97/255., 1)
-                        Rectangle:
-                            pos: self.pos,
-                            size: self.size
-        TableContent
-            id: table
+        orientation: 'horizontal'
+        size_hint_y: .1
+        Month:
+            size_hint_x: .35
+        Sumup:
+            id: sum
+            color: app.col['morski']
+            font_size: sp(28)
+#            font_name: 'BOYCOTT_'
+            size_hint_x: .5
+            canvas:
+                Color:
+                    rgba: (246/255., 205/255., 97/255., 1)
+                    Rectangle:
+                        pos: self.pos,
+                        size: self.size
+        Button:
+            size_hint_x: .15
+            text: '[size=25]\u21BA[/size]'
+            markup: True
+            on_release: root.update_table_content()
+
+    TableContent
+        id: 'tablecontent'
 
 <LoginPopup>:
     title: 'Dane logowania'
@@ -294,7 +293,7 @@
             background_color: app.col['zolty']
         Button:
             text: root.txt_dwn
-            on_release: root.download(months=6)
+            on_release: root.download(months=3)
             background_color: app.col['szary']
             text_size : self.width, None
             halign: 'center'
@@ -305,17 +304,17 @@
             text_size : self.width, None
             halign: 'center'
         Button:
-            text: '[size=26]\u2620[/size] Usuń dane z telefonu [size=26]\u2620[/size]'
+            text: '[size=26]\u2620[/size] Usuń dane z urządzenia [size=26]\u2620[/size]'
             on_release: root.clear_all()
             background_color: app.col['item']
             markup: True
 
 <MainWidget>:
-    on_index: root.update_tab()
     id: carousel
     loop: True
     NewEntry
     Table
     Synchro
+
 
         ##TODO w newentry: zmin napis na guzkiu obok kalendarza.

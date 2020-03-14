@@ -1,8 +1,6 @@
 library(shinydashboard)
 library(DT)
 source('global.R')
-cat <- get_categories()
-CATEGORIES <- c(as.character(cat$name), '*')
 
 
 dashboardPage(
@@ -24,7 +22,8 @@ dashboardPage(
                   tabPanel("lata", tableOutput("stats2"), width=3),
                   width=3, height='422px'),
               box(
-                  selectInput('cat', 'Wybierz kategorie:', CATEGORIES, c('Zakupy', 'Rachunki', 'Paliwo i transport'), multiple = TRUE),
+                  selectInput('cat', 'Wybierz kategorie:', c(as.character(CATEGORIES[[1]]), '*'),
+                  selected=c('Zakupy', 'Rachunki', 'Paliwo i transport'), multiple = TRUE),
                   plotOutput("categories", width="100%"),
                   radioButtons('type', '', c('Wydatki' ,'Przychody'), selected='Wydatki', inline=TRUE), width=11)
               )

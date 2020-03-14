@@ -2,10 +2,9 @@ import json
 from datetime import datetime, date
 import os
 import requests
-from kivy.uix.accordion import Accordion, AccordionItem
+from kivy.core.window import Window
 
 from kivy.uix.carousel import Carousel
-from kivy.uix.gridlayout import GridLayout
 from kivy.uix.popup import Popup
 from kivy.uix.recycleview import RecycleView
 from kivy.properties import StringProperty, ObjectProperty
@@ -15,10 +14,7 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.spinner import Spinner
-from kivy.uix.textinput import TextInput
 from kivy.uix.togglebutton import ToggleButton
-from kivy.config import Config
-Config.set('kivy', 'keyboard_mode', 'systemandmulti')
 
 from utils import load_config, year_month_prev, year_month_next, datename
 from multiexpressionbutton import MultiExpressionButton
@@ -81,146 +77,7 @@ class Category(Spinner):
             json.dump(names, f, indent=1)
 
 
-    def unification(self):
-        if type(category) == str:
-            icon = Category().names[category]['icon']
-        else:
-            icon = [ v['icon'] for k,v in Category().names.items() if v['id'] == category]
-        icon = '[size=40sp][color=#e9efb1]%s[/color][/size]' % icon[0]
-
-
-class AccordionItemRow(BoxLayout):
-    def __init__(self, kv_val, type, **kwargs):
-        super(AccordionItemRow,self).__init__(**kwargs)
-        self.orientation = 'horizontal'
-        self.kv_name = kv_val.split('  ')[-1]
-        self.type = type
-        self.add_widget(Label(text=kv_val))
-        self.b = Button(text='\u2612', size_hint_x=.15)
-        self.b.bind(on_press=self.delete)
-        self.add_widget(self.b)
-
-    def delete(self, *args, **kwargs):
-        C = Category()
-        not_removable = self.parent.parent.parent.parent.parent.parent.parent.parent.parent.parent.children[-1].children[-1].children[0].children[0].children[0].df_categories
-        if not self.kv_name in not_removable:
-            C.remove(self.kv_name)
-            self.parent.parent.parent.parent.parent.reset(self.type, **kwargs)
-        else:
-            self.b.text = ''
-
-
-class AccordionContent(AccordionItem, Category):
-
-    def __init__(self, type='-', **kwargs):
-        super(AccordionContent, self).__init__(**kwargs)
-        self.build(type)
-
-    def reset(self, type):
-        self.refresh() # category
-        self.remove_widget(self.col)
-        self.build(type)
-
-    def build(self, type):
-        self.title = type
-        self.col = BoxLayout(orientation='vertical')
-        for v in self.kv_vals[type]:
-            self.col.add_widget(AccordionItemRow(v, type))
-        self.add_widget(self.col)
-
-
-class AccordionEdit(AccordionItem):
-    def __init__(self, **kwargs):
-        super(AccordionEdit, self).__init__(**kwargs)
-        self.title = '\u270D Edytuj kategorie'
-        row_new_category = BoxLayout(orientation='vertical')
-        row_new_category.add_widget(TextInput(hint_text='Nowa kategoria'))
-        row_new_category.add_widget(Icons(size_hint_y=5))
-        b2 = BoxLayout(orientation='horizontal')
-        b2.add_widget(ToggleButton(id='category_type', group='type', text='-'))
-        b2.add_widget(ToggleButton(id='category_type', group='type', text='+'))
-        row_new_category.add_widget(b2)
-        row_new_category.add_widget(Button(text='Dodaj', on_release=self.save))
-        row_new_category.add_widget(Button(text='Wyślij/pobierz do API'))
-        row_new_category.add_widget(Label(text=''))
-        self.add_widget(row_new_category)
-
-    def get_items(self):
-        return self.children[0].children[0].children[0].children[0].children
-
-    def save(self, *args):
-        add_items = self.get_items()
-
-        # -1 Logi
-        # 0 Pobierz z API
-        # 1 Wyślij do API
-        # 2 Dodaj
-        # 3 BoxLayout -> togglebuttons
-        # 4 Icons
-        # 5 Nowa kategoria
-
-        # + add_items[2].children[0].state
-        # - add_items[2].children[1].state
-        tb = add_items[3].children
-        type = '-' if tb[1].state == 'down' else '+'
-        icon = [i.text for i in add_items[4].children if i.state == 'down']
-        category_name = add_items[5].text
-
-        if len(category_name) and len(type) and len(icon):
-            icon = icon[0]
-            with open('my_categories.json', 'r') as f:
-                categories = json.load(f)
-            categories[category_name] = {
-                'icon': icon,
-                'type': type,
-                'id': -1
-            }
-            with open('my_categories.json', 'w') as f:
-                json.dump(categories, f)
-                add_items[0].text = 'Kategoria "%s  %s" dodana jako "%s".' % (
-                    icon, category_name, type)
-
-            plus, minus = self.parent.children[1:]
-            plus.reset('+')
-            minus.reset('-')
-            for t in tb:
-                t.state = 'normal'
-            add_items[5].text = ''
-            for i in add_items[4].children:
-                i.state = 'normal'
-
-
-class Icons(GridLayout):
-    def __init__(self, **kwargs):
-        super(Icons, self).__init__(**kwargs)
-        self.cols = 7
-        icons = ['\u271A','\u273F','\u2708','\u2709','\u2638','\u2622','\u2614','\u2615',
-                 '\u2604','\u2603','\u2601','\u2600','\u2618','\u2616','\u262D','\u262E','\u2620','\u260E',
-                 '\u2663', '\u263B', '\u265A', '\u265B','\u265C','\u265D','\u265E','\u265F','\u25D5','\u25EC',
-                 '\u25F1', '\u221E','\u2706', '\u2707', '\u2652', '\u2665', '\u2696', '\u26A1']
-        for i in icons:
-            self.add_widget(ToggleButton(text=i, group='icons', markup=True))
-
-
-class CategoryOptions(Popup, Category):
-    def __init__(self, **kwargs):
-        super(CategoryOptions, self).__init__(**kwargs)
-        print(self.kv_vals)
-
-        acc = Accordion()
-        acc.orientation = 'vertical'
-        incomes = AccordionContent(type='+')
-        expenses = AccordionContent(type='-')
-        add = AccordionEdit()
-        acc.add_widget(expenses)
-        acc.add_widget(incomes)
-        acc.add_widget(add)
-        self.add_widget(acc)
-
-    # def
-
-
-class Save(MultiExpressionButton):
+class Save(Button):
 
     def on_release(self):
         print('zapisuje...')
@@ -252,10 +109,6 @@ class Save(MultiExpressionButton):
         self.parent.parent.ids.plus.state = 'normal'
         self.parent.parent.ids.minus.state = 'down'
         self.parent.parent.ids.category.text = self.parent.parent.ids.category.values[0]
-
-    def on_long_press(self):
-        pop = CategoryOptions()
-        pop.open()
 
 
 class Undo(MultiExpressionButton):
@@ -299,10 +152,11 @@ class Item(Label): pass
 class Sumup(Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.text = '\u03A3 = %.2f' % TableContent().month_total()
+        self.text = '\u03A3=%.2f' % TableContent().month_total()
 
     def update(self):
-        self.text = '\u03A3 = %.2f' % self.parent.parent.children[0].mnth_tot
+        self.text = '\u03A3=%.2f' % self.parent.parent.children[0].mnth_tot
+        # self.text = '\u03A3=%.2f' % self.parent.parent.children[0].mnth_tot
 
 
 class Month(BoxLayout):
@@ -359,7 +213,7 @@ class Data:
         try:
             with open(self.txt_path, 'r') as f:
                 df0 = json.load(f)
-            df0 = sorted(df0, key=lambda x: x['date'], reverse=True)
+            df0 = sorted(df0, key=lambda x: (x['date'], x['id']), reverse=True)
         except FileNotFoundError:
             df0 = []
 
@@ -370,7 +224,7 @@ class Data:
         except FileNotFoundError:
             df = []
         self.df = df + df0
-        self.category_unification()
+        # self.category_unification()
 
     def save(self, row):
         try:
@@ -382,20 +236,14 @@ class Data:
         with open(self.tmp_path, 'w') as f:
             json.dump(data, f, indent=2)
 
-    def category_unification(self):
-        C = Category().names
-        for row in self.df:
-            if type(row['category']) == int:
-                try:
-                    tmp = { v['id']: k for k,v in C.items()}
-                    name =  tmp[row['category']]
-                    row['category'] = name
-                except:
-                    pass
 
+class Table(BoxLayout):
 
-
-class Table(BoxLayout):pass
+    def update_table_content(self):
+        print('update')
+        self.remove_widget(self.children[0])
+        self.add_widget(TableContent())
+        self.ids.sum.update()
 
 
 class TableContent(RecycleView):
@@ -407,8 +255,9 @@ class TableContent(RecycleView):
 
     def clean_data(self, row):
         date, category, note, amount = row['date'], row['category'], row['note'], row['amount']
+        weekday = datetime.strptime(date, '%Y-%m-%d').strftime('%a')
         date = date.split('-')
-        date = date[0] + '/' + date[1]
+        date = date[2] + ' ' + weekday
         if type(category) == str:
             icon = Category().names[category]['icon']
         else:
@@ -431,14 +280,13 @@ class TableContent(RecycleView):
         data = Data(filename='%d_%.2d' % (self.year%2000, self.month))
         data.read()
         self.df = data.df
-        self.df_categories = set([i['category'] for i in data.df])
         all_data = sum([self.clean_data(r) for r in self.df], [])
         self.data =  [{'text': str(r)} for r in all_data]
         self.mnth_tot = self.month_total()
 
 
 class Synchro(BoxLayout):
-    txt_dwn = StringProperty('\u21CA Ściągnij pół roku')
+    txt_dwn = StringProperty('\u21CA Pobierz 3 miesiące')
     txt_snd = StringProperty('\u21C8 Wyślij nowe wpisy')
 
     @staticmethod
@@ -538,13 +386,32 @@ class Status(Button):
         pop.open()
 
 
-class MainWidget(Carousel):
+class MainWidget(Carousel):pass
 
-    def update_tab(self):
-        if self.children[0].children[0].__class__ == Table().__class__:
-            Tab = self.children[0].children[0].__class__
-            self.children[0].children[0].clear_widgets()
-            self.children[0].children[0].add_widget(Tab())
+    # def update_tab(self):
+    #     if self.children[0].children[0].__class__ == Table().__class__:
+    #         Tab = self.children[0].children[0].__class__
+    #         self.children[0].children[0].clear_widgets()
+    #         self.children[0].children[0].add_widget(Tab())
+
+    # def __init__(self, **kwargs):
+    #     super(MainWidget, self).__init__(**kwargs)
+    #
+    #     self.new_entry = TabbedPanelHeader(text='[size=33]\u270e[/size]', markup=True)
+    #     self.table = TabbedPanelHeader(text='[size=33]\u25A4[/size]', markup=True)
+    #     self.synchro = TabbedPanelHeader(text='[size=33]\u21C6[/size]', markup=True)
+    #
+    #     self.new_entry.content = NewEntry()
+    #     self.add_widget(self.new_entry)
+    #     self.set_def_tab(self.new_entry)
+    #
+    #     self.table.content = Table()
+    #     self.table.bind(on_release=self.switch)
+    #     self.add_widget(self.table)
+    #
+    #     self.synchro.content = Synchro()
+    #     self.add_widget(self.synchro)
+
 
 
 class InspectorBudgetApp(App):
@@ -558,6 +425,7 @@ class InspectorBudgetApp(App):
     })
 
     def build(self):
+        Window.softinput_mode = 'pan'
         data_path = os.path.join(os.getcwd(), load_config()['device_path'])
         if not os.path.exists(data_path):
             os.mkdir(data_path)

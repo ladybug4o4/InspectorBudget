@@ -12,7 +12,7 @@ get_categories <- function(){
     return(as.data.frame(cat))
   }
 
-CATEGORIES <- get_categories()$name
+CATEGORIES <- split(get_categories()$name, get_categories()$sign)
 
 get_data <- function(){
     r <- httr::GET(sprintf('%s/entries/?limit=500000', URL), accept_json())

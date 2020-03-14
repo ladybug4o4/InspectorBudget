@@ -13,8 +13,6 @@ import timeit
 
 __author__ = "Mark Rauch Richards"
 
-from kivy.uix.spinner import Spinner
-
 DOUBLE_TAP_TIME = 0.2   # Change time in seconds
 LONG_PRESSED_TIME = 0.5  # Change time in seconds
 

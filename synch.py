@@ -56,6 +56,7 @@ class SynchroAPI():
                 ids.append(r.json()['id'])
             os.remove(pth)
         txt_snd = 'Nowe wpisy nr: %s' % str(ids)
+        self.download(months=3)
         return txt_snd
 
 
@@ -165,7 +166,6 @@ class SynchroRouter():
             file_names.append(tmp_file)
             N1.append(n1)
             N2.append(n2)
-            txt_snd = 'Plik %s miał %s wpisów, obecnie ma %s.' % (tmp_name, n1, n2)
             with open(target, 'rb') as data:
                     self.connect()
                     self.server.storeFile(self.share_name,
