@@ -2,6 +2,8 @@ import json
 from datetime import datetime, date
 import os
 import requests
+import weakref
+
 from kivy.core.window import Window
 
 from kivy.uix.carousel import Carousel
@@ -152,17 +154,16 @@ class Item(Label): pass
 class Sumup(Label):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.text = '\u03A3=%.2f' % TableContent().month_total()
+        self.text = '\u03A3=%.2f' % TableContent().mnth_tot
 
     def update(self):
-        self.text = '\u03A3=%.2f' % self.parent.parent.children[0].mnth_tot
-        # self.text = '\u03A3=%.2f' % self.parent.parent.children[0].mnth_tot
+        self.text = '\u03A3=%.2f' % self.parent.parent.ids.tablecontent.mnth_tot
 
 
 class Month(BoxLayout):
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        super(Month, self).__init__(**kwargs)
         self.month_i = datetime.today().month
         self.year = datetime.today().year
         self.text = self.month_name(self.month_i)
@@ -194,10 +195,10 @@ class Month(BoxLayout):
 
     def update(self):
         self.title.text = self.txt()
-        self.parent.parent.parent.ids.table.month = self.month_i
-        self.parent.parent.parent.ids.table.year = self.year
-        self.parent.parent.parent.ids.table.create()
-        self.parent.parent.parent.ids.sum.update()
+        self.parent.parent.ids.tablecontent.month = self.month_i
+        self.parent.parent.ids.tablecontent.year = self.year
+        self.parent.parent.ids.tablecontent.create()
+        self.parent.parent.ids.sum.update()
 
 
 class Data:
@@ -240,10 +241,11 @@ class Data:
 class Table(BoxLayout):
 
     def update_table_content(self):
-        print('update')
-        self.remove_widget(self.children[0])
-        self.add_widget(TableContent())
-        self.ids.sum.update()
+        self.remove_widget(self.ids.tablecontent)
+        tc = TableContent()
+        self.add_widget(tc)
+        self.ids['tablecontent'] = weakref.ref(tc)
+        self.ids.menubar.children[2].update()
 
 
 class TableContent(RecycleView):
@@ -321,8 +323,6 @@ class Synchro(BoxLayout):
                 else:
                     self.txt_dwn = 'Ustaw ustawienia.'
         except Exception as e:
-            e = str(e)
-            print(e)
             self.txt_dwn = 'Problem z połączeniem. Sprawdź ustawienia.'
 
     def send(self):
@@ -343,8 +343,6 @@ class Synchro(BoxLayout):
                     else:
                         self.txt_snd = 'Ustaw ustawienia.'
             except Exception as e:
-                e = str(e)
-                print(e)
                 self.txt_snd = 'Problem z połączeniem.'
         else:
             self.txt_snd = 'Nic nowego.'
@@ -354,15 +352,23 @@ class LoginPopup(Popup):
     def __init__(self, caller, **kwargs):
         self.caller = caller
         super(LoginPopup, self).__init__(**kwargs)
+        Window.bind(on_key_down=self._on_keyboard_down)
+
+    def _get_token(self, url):
+        user = self.ids.user_ip.text
+        pswd = self.ids.pswd_ip.text
+        resp = requests.post(url, data={'username': user, 'password': pswd}).json()
+        return resp.get('token', 'NULL')
 
     def save(self, type):
         self.caller.type = type
         user = self.ids.user.text
         pswd = self.ids.pswd.text
         path = self.ids.path.text
-        ip = self.ids.ip.text
+        ip = 'http://' + self.ids.ip.text + '/'
         ip_name = self.ids.ip_name.text
         router_ip = self.ids.router_ip.text
+        token = self._get_token(ip + 'api-token-auth/')
         with open('config.json', 'r') as f:
             config = json.load(f)
         config['router_ip'] = router_ip
@@ -372,10 +378,18 @@ class LoginPopup(Popup):
         config['share_name'] = user
         config['client'] = user
         config['type'] = type
-        config['api_url'] = 'http://' + ip + '/' + ip_name + '/'
+        config['api_url'] = ip + ip_name + '/'
+        config['token'] = 'Token ' + token
         with open('my_config.json', 'w') as f:
             json.dump(config, f, indent=2)
         self.dismiss()
+
+    def _on_keyboard_down(self, instance, keyboard, keycode, text, modifiers):
+        # import pdb; pdb.set_trace()
+        if self.ids.acc_api.collapse == False and keycode == 40:  # 40 - Enter key pressed
+            self.save("api")
+        if self.ids.acc_router.collapse == False and keycode == 40:  # 40 - Enter key pressed
+            self.save("router")
 
 
 class Status(Button):
@@ -384,6 +398,7 @@ class Status(Button):
     def on_press(self, **kwargs):
         pop = LoginPopup(caller=self)
         pop.open()
+
 
 
 class MainWidget(Carousel):pass

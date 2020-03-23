@@ -7,5 +7,6 @@
   "password": "",
   "share_name": "",
   "api_url": "",
-  "type": ""
+  "type": "",
+  "token": ""
 }

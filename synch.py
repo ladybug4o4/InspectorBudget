@@ -15,12 +15,13 @@ class SynchroAPI():
         config = load_config()
         self.url = config['api_url'] + 'entries/'
         self.device_path = config['device_path']
+        self.headers = {'Authorization': config['token']}
 
     def download(self, months=0):
         t = 30
         if months == 0:
             ##TODO: save as separate files
-            r = requests.get(self.url, timeout=t)
+            r = requests.get(self.url, headers=self.headers, timeout=t)
             data = r.json()['results']
             with open('data/data.json', 'w') as fp:
                 json.dump(data, fp, indent=1)
@@ -31,12 +32,16 @@ class SynchroAPI():
                 months, [])
             files = {}
             for ym in year_month_list:
-                r = requests.get(self.url + '?year=%s&month=%s' % ym, timeout=t)
+                r = requests.get(self.url + '?year=%s&month=%s' % ym,
+                                 headers=self.headers, timeout=t)
                 r = r.json()['results']
-                file_name = '%s_%.2d.json' % (str(ym[0])[-2:], ym[1])
+                file_name = '%s_%.2d.' % (str(ym[0])[-2:], ym[1])
                 files[file_name] = len(r)
-                with open('data/' + file_name, 'w') as fp:
+                with open('data/' + file_name + 'json', 'w') as fp:
                     json.dump(r, fp, indent=1)
+                with open('data/' + file_name + 'txt', 'w') as fp:
+                    sum_agg = sum([float(i['amount']) for i in r])
+                    fp.writelines('\u03A3=%.2f' % sum_agg)
             return str(list(files.keys())), str(list(files.values()))
         else:
             print('months should be positive value or 0 (for all data to download')
@@ -52,7 +57,7 @@ class SynchroAPI():
             with open(pth, 'r') as fp:
                 records = json.load(fp)
             for rec in records:
-                r = requests.post(self.url, rec)
+                r = requests.post(self.url, rec, headers=self.headers)
                 ids.append(r.json()['id'])
             os.remove(pth)
         txt_snd = 'Nowe wpisy nr: %s' % str(ids)

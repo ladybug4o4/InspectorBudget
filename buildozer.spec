@@ -28,7 +28,7 @@ source.include_exts = py,png,jpg,kv,atlas,json
 source.exclude_patterns = license,images/*/*.jpg,data/*,my_config.json
 
 # (str) Application versioning (method 1)
-version = 0.7
+version = 0.8
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -250,7 +250,7 @@ ios.ios_deploy_branch = 1.7.0
 [buildozer]
 
 # (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
-log_level = 2
+log_level = 0
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
